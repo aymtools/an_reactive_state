@@ -7,16 +7,10 @@ issue_tracker: https://github.com/aymtools/an_reactive_state/issues
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
-  flutter: '>=3.10.0'
 
 dependencies:
-  flutter:
-    sdk: flutter
   cancellable: ^2.6.0
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: any
-
-flutter:
+  test: ^1.24.0
+  lints: ^2.1.0

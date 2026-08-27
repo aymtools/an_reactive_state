@@ -13,9 +13,9 @@ leaks.
 
 ## 🌟 Key Killer Features
 
-* ⚡ **Unified Evaluation Model**: Combines `MutableState` and `ComputedState` into a single,
-  cohesive `RState<T>` class driven by an authoritative internal `_computer`. It is entirely
-  polymorphic-transparent and supports infinite dependency chain nesting (A -> B -> C -> D).
+* ⚡ **Explicit State Roles**: Separates reactive nodes into `RState<T>` (writable atoms) and
+  `ComputedState<T>` (read-only derivations). This architecture ensures strict data flow control and
+  prevents accidental writes to calculated nodes at the compiler level.
 * ⛓️ **Linked-List Evaluation Context**: Replaces expensive dynamic array reallocations with a
   lightweight, doubly-linked-list node switching architecture. PUSH/POP operations for reactive
   tracking run at a strict, deterministic **O(1) time complexity**.
@@ -60,7 +60,7 @@ dependencies:
 ### 1. Basic Read/Write, Derived State, and Side Effects (`effect`)
 
 In `an_reactive_state`, raw state sources and high-order calculation pipelines share a uniform
-interface under `State<T>`.
+interface.
 
 ```dart
 import 'package:cancellable/cancellable.dart';
@@ -69,14 +69,14 @@ import 'package:an_reactive_state/an_reactive_state.dart';
 void main() {
   final scope = Cancellable();
 
-  // 1. Declare raw state atoms (omitting the getter closure makes it a writable state)
+  // 1. Declare raw state atoms (Sources)
   final price = RState<double>(initialValue: 99.0, cancellable: scope);
   final count = RState<int>(initialValue: 1, cancellable: scope);
 
-  // 2. Declare a high-order derived calculation state driven by an internal getter
-  final totalPrice = RState<double>(
+  // 2. Declare a high-order derived calculation state (Computed)
+  final totalPrice = ComputedState<double>(
     cancellable: scope,
-    getter: () => price.value * count.value, // Automatically tracks price and count
+    computer: () => price.value * count.value, // Automatically tracks price and count
   );
 
   // 3. Register a side effect: whatever reactive states it reads inside the block,
@@ -105,7 +105,7 @@ void main() {
   final height = RState<int>(initialValue: 5, cancellable: scope);
   final isLogging = RState<bool>(initialValue: true, cancellable: scope);
 
-  final areaReport = RState<String>(
+  final areaReport = ComputedState<String>(
     cancellable: scope,
     computer: () {
       // Core control: Read the switch silently inside an untracked closure.
@@ -150,13 +150,13 @@ class OrderCartManager {
 
   late final RState<double> productPrice;
   late final RState<int> quantity;
-  late final RState<double> finalPay;
+  late final ComputedState<double> finalPay;
 
   OrderCartManager() {
     productPrice = RState<double>(initialValue: 15.0, cancellable: _bag);
     quantity = RState<int>(initialValue: 1, cancellable: _bag);
 
-    finalPay = RState<double>(
+    finalPay = ComputedState<double>(
       cancellable: _bag,
       // Inject Equality Guard to ensure content matching blocks computational duplication
       equals: (a, b) => a == b,
@@ -185,14 +185,14 @@ class OrderCartManager {
 
 ## 🛠️ Functional Advanced Trick: Freeze / Once Memoization
 
-You do not even need to extend the internal methods of `RState`. Thanks to our highly sensitive *
-*Dual-Buffered Graph Diffing algorithm**, a developer can write an self-rewriting closure inside the
-`getter` to achieve an auto-detaching one-time snapshot that **calculates only once, breaks all
+You do not even need to extend the internal methods of `ComputedState`. Thanks to our highly sensitive
+**Dual-Buffered Graph Diffing algorithm**, a developer can write a self-rewriting closure inside the
+`computer` to achieve an auto-detaching one-time snapshot that **calculates only once, breaks all
 parent connections, and permanently freezes itself**:
 
 ```dart
 
-final RState<String> lazyAndFrozenConfig = RState<String>(
+final ComputedState<String> lazyAndFrozenConfig = ComputedState<String>(
   cancellable: scope,
   computer: () {
     String? snapshot;

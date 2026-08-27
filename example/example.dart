@@ -4,12 +4,12 @@ import 'package:an_reactive_state/an_reactive_state.dart';
 void main() {
   final scope = Cancellable();
 
-  // 1. Declare raw state atoms (omitting the getter closure makes it a writable state)
+  // 1. Declare raw state atoms
   final price = RState<double>(initialValue: 99.0, cancellable: scope);
   final count = RState<int>(initialValue: 1, cancellable: scope);
 
-  // 2. Declare a high-order derived calculation state driven by an internal getter
-  final totalPrice = RState<double>(
+  // 2. Declare a high-order derived calculation state
+  final totalPrice = ComputedState<double>(
     cancellable: scope,
     computer: () => price.value * count.value, // Automatically tracks price and count
   );

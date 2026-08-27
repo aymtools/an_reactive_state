@@ -7,7 +7,7 @@ import 'package:cancellable/cancellable.dart';
 /// 响应式拓扑网络的基石。
 /// 彻底抹去泛型 [T]，只专注于依赖的注册、注销与失效扩散。
 abstract class _Observable {
-  void addListener(void Function() listener);
+  void addListener(void Function() listener, {Cancellable? cancellable});
 
   void _removeListener(void Function() listener);
 
@@ -81,7 +81,7 @@ class _ReactiveScope {
         final finalObservables = List<_Observable>.from(_batchQueue);
         _batchQueue.clear();
         for (final obs in finalObservables) {
-          if (obs is RState) {
+          if (obs is _BaseState) {
             obs._directNotifyListeners();
           }
         }
@@ -108,12 +108,10 @@ R untracked<R>(R Function() action) {
   return result as R;
 }
 
-// ==================== 3. 终极强悍的 State<T> 实现 ====================
+// ==================== 3. 终极强悍的 State 体系实现 ====================
 
-class RState<T> implements _Observable {
-  final T Function() _computer;
-  late T _cachedValue;
-  final bool _isWritable;
+abstract class _BaseState<T> implements _Observable {
+  T? _cachedValue;
   final Cancellable _rootCancellable;
   final bool Function(T a, T b)? _equals;
 
@@ -123,28 +121,15 @@ class RState<T> implements _Observable {
   final Map<_Observable, Cancellable> _activeParentTokens = {};
   Set<_Observable> _dependencies = {};
 
-  RState({
-    T? initialValue,
-    T Function()? computer,
+  _BaseState({
     required Cancellable cancellable,
     bool Function(T a, T b)? equals,
   })  : _rootCancellable = cancellable,
-        _equals = equals,
-        _isWritable = computer == null,
-        _computer = computer ?? (() => initialValue as T) {
-    if (computer == null && initialValue == null) {
-      throw ArgumentError('普通可变状态必须提供 initialValue 初始值');
-    }
-
+        _equals = equals {
     _rootCancellable.onCancel.then((_) {
       _listeners.clear();
       _clearAllDependencies();
     });
-
-    if (_isWritable) {
-      _cachedValue = initialValue as T;
-      _isDirty = false;
-    }
   }
 
   void _clearAllDependencies() {
@@ -158,78 +143,22 @@ class RState<T> implements _Observable {
   T peek() => untracked(() => value);
 
   T get value {
-    if (_isDirty && !_isWritable) {
-      _evaluateAndTrack();
+    if (_isDirty) {
+      _evaluateIfDirty();
     }
 
     final scope = _ReactiveScope();
     if (scope.activeContext != null && !scope.isUntrackedMode) {
       scope.activeContext!._reportDependency(this);
     }
-    return _cachedValue;
+    return _cachedValue as T;
   }
 
-  set value(T newValue) {
-    if (!_isWritable) throw UnsupportedError('该状态由计算闭包驱动，属于只读状态。');
-    if (!_rootCancellable.isAvailable) return;
-    if (_isEqual(_cachedValue, newValue)) return;
-
-    _cachedValue = newValue;
-    _notifyOrQueue();
-  }
+  void _evaluateIfDirty();
 
   bool _isEqual(T oldVal, T newVal) {
     if (_equals != null) return _equals!(oldVal, newVal);
     return oldVal == newVal;
-  }
-
-  void _evaluateAndTrack() {
-    if (!_rootCancellable.isAvailable) return;
-
-    final scope = _ReactiveScope();
-
-    // 循环依赖检测：自底向上遍历 Zone 内部留存的环境链表，确保无死循环
-    _EvaluationContext? ancestor = scope._currentContext;
-    while (ancestor != null) {
-      if (ancestor.observable == this) {
-        throw StateError('【拓扑崩溃】检测到循环依赖死循环！');
-      }
-      ancestor = ancestor.parent;
-    }
-
-    final oldDependencies = _dependencies;
-    final newDependencies = <_Observable>{};
-    _dependencies = newDependencies;
-
-    // 将自己压入全新隔离的 Zone 上下文中安全求值，彻底无需手动执行 pop()
-    scope.pushContext(this, false, () {
-      late T freshValue;
-      bool hasError = false;
-
-      try {
-        freshValue = _computer();
-      } catch (e) {
-        hasError = true;
-        // print('【异常隔离】状态计算闭包抛出异常，保持历史值。错误原因: $e');
-        freshValue = _cachedValue;
-      }
-
-      // 精确依赖 Diff：只切断不再被选中的逻辑分支对应的上游监听
-      for (final oldParent in oldDependencies) {
-        if (!newDependencies.contains(oldParent)) {
-          final tokenToRemove = _activeParentTokens.remove(oldParent);
-          tokenToRemove?.cancel();
-        }
-      }
-
-      _isDirty = false;
-
-      // 结合 Equality Guard 判定最终结果是否存在实质演变
-      if (!hasError && !_isEqual(_cachedValue, freshValue)) {
-        _cachedValue = freshValue;
-        _notifyOrQueue();
-      }
-    });
   }
 
   @override
@@ -269,14 +198,117 @@ class RState<T> implements _Observable {
   }
 
   @override
-  void addListener(void Function() listener) {
+  void addListener(void Function() listener, {Cancellable? cancellable}) {
     if (!_rootCancellable.isAvailable) return;
+    if (cancellable != null && !cancellable.isAvailable) return;
+
     _listeners.add(listener);
+
+    if (cancellable != null) {
+      cancellable.onCancel.then((_) => _removeListener(listener));
+    }
   }
 
   @override
   void _removeListener(void Function() listener) {
     _listeners.remove(listener);
+  }
+}
+
+class RState<T> extends _BaseState<T> {
+  RState({
+    required T initialValue,
+    required super.cancellable,
+    super.equals,
+  }) {
+    _cachedValue = initialValue;
+    _isDirty = false;
+  }
+
+  @override
+  void _evaluateIfDirty() {
+    // RState as a source manages its own state, nothing to evaluate here.
+  }
+
+  set value(T newValue) {
+    if (!_rootCancellable.isAvailable) return;
+    if (_isEqual(_cachedValue as T, newValue)) return;
+
+    _cachedValue = newValue;
+    _notifyOrQueue();
+  }
+
+  /// 强制通知下游进行刷新
+  void refresh() {
+    _notifyOrQueue();
+  }
+}
+
+class ComputedState<T> extends _BaseState<T> {
+  final T Function() _computer;
+
+  ComputedState({
+    required T Function() computer,
+    required super.cancellable,
+    super.equals,
+  }) : _computer = computer;
+
+  @override
+  void _evaluateIfDirty() {
+    _evaluateAndTrack();
+  }
+
+  void _evaluateAndTrack() {
+    if (!_rootCancellable.isAvailable) return;
+
+    final scope = _ReactiveScope();
+
+    // 循环依赖检测：自底向上遍历 Zone 内部留存的环境链表，确保无死循环
+    _EvaluationContext? ancestor = scope._currentContext;
+    while (ancestor != null) {
+      if (ancestor.observable == this) {
+        throw StateError('【拓扑崩溃】检测到循环依赖死循环！');
+      }
+      ancestor = ancestor.parent;
+    }
+
+    final oldDependencies = _dependencies;
+    final newDependencies = <_Observable>{};
+    _dependencies = newDependencies;
+
+    // 将自己压入全新隔离的 Zone 上下文中安全求值，彻底无需手动执行 pop()
+    scope.pushContext(this, false, () {
+      late T freshValue;
+      bool hasError = false;
+
+      try {
+        freshValue = _computer();
+      } catch (e) {
+        hasError = true;
+        // 如果是首次求值失败且没有旧值，可能会抛出异常，这里保持现状
+        if (_cachedValue != null) {
+          freshValue = _cachedValue as T;
+        } else {
+          rethrow;
+        }
+      }
+
+      // 精确依赖 Diff：只切断不再被选中的逻辑分支对应的上游监听
+      for (final oldParent in oldDependencies) {
+        if (!newDependencies.contains(oldParent)) {
+          final tokenToRemove = _activeParentTokens.remove(oldParent);
+          tokenToRemove?.cancel();
+        }
+      }
+
+      _isDirty = false;
+
+      // 结合 Equality Guard 判定最终结果是否存在实质演变
+      if (!hasError && (_cachedValue == null || !_isEqual(_cachedValue as T, freshValue))) {
+        _cachedValue = freshValue;
+        _notifyOrQueue();
+      }
+    });
   }
 }
 
@@ -344,7 +376,7 @@ class _EffectInstance implements _Observable {
 
   // Effect 属于依赖图的终端（叶子节点），不会再有更下游去读它，因此 add/remove 为空实现
   @override
-  void addListener(void Function() listener) {}
+  void addListener(void Function() listener, {Cancellable? cancellable}) {}
 
   @override
   void _removeListener(void Function() listener) {}
