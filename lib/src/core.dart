@@ -7,9 +7,11 @@ import 'package:cancellable/cancellable.dart';
 /// 响应式拓扑网络的基石。
 /// 彻底抹去泛型 [T]，只专注于依赖的注册、注销与失效扩散。
 abstract class _Observable {
+  Cancellable get disposable;
+
   void addListener(void Function() listener, {Cancellable? cancellable});
 
-  void _removeListener(void Function() listener);
+  void removeListener(void Function() listener);
 
   /// 让每个响应式原子都声明“自己作为下游，如何登记上游依赖”的契约
   void _reportDependency(_Observable parentState);
@@ -83,7 +85,7 @@ class _ReactiveScope {
         final finalObservables = List<_Observable>.from(_batchQueue);
         _batchQueue.clear();
         for (final obs in finalObservables) {
-          if (obs is _BaseState) {
+          if (obs is BaseState) {
             obs._directNotifyListeners();
           }
         }
@@ -112,7 +114,7 @@ R untracked<R>(R Function() action) {
 
 // ==================== 3. 终极强悍的 State 体系实现 ====================
 
-abstract class _BaseState<T> implements _Observable {
+abstract class BaseState<T> implements _Observable {
   T? _cachedValue;
   final Cancellable _rootCancellable;
   final bool Function(T a, T b)? _equals;
@@ -123,7 +125,7 @@ abstract class _BaseState<T> implements _Observable {
   final Map<_Observable, Cancellable> _activeParentTokens = {};
   Set<_Observable> _dependencies = {};
 
-  _BaseState({
+  BaseState({
     required Cancellable cancellable,
     bool Function(T a, T b)? equals,
   })  : _rootCancellable = cancellable,
@@ -133,6 +135,9 @@ abstract class _BaseState<T> implements _Observable {
       _clearAllDependencies();
     });
   }
+
+  @override
+  Cancellable get disposable => _rootCancellable.makeCancellable();
 
   void _clearAllDependencies() {
     for (final token in _activeParentTokens.values) {
@@ -179,7 +184,7 @@ abstract class _BaseState<T> implements _Observable {
 
         parentState.addListener(onParentChange);
         depToken.onCancel
-            .then((_) => parentState._removeListener(onParentChange));
+            .then((_) => parentState.removeListener(onParentChange));
       }
     }
   }
@@ -208,17 +213,29 @@ abstract class _BaseState<T> implements _Observable {
     _listeners.add(listener);
 
     if (cancellable != null) {
-      cancellable.onCancel.then((_) => _removeListener(listener));
+      cancellable.onCancel.then((_) => removeListener(listener));
     }
   }
 
   @override
-  void _removeListener(void Function() listener) {
+  void removeListener(void Function() listener) {
     _listeners.remove(listener);
+  }
+
+  /// 强制通知下游进行刷新
+  void refresh();
+
+  static BaseState<dynamic>? get currentState {
+    return _ReactiveScope._instance._currentContext?.observable
+        as BaseState<dynamic>?;
+  }
+
+  static bool? get currentIsUntracked {
+    return _ReactiveScope._instance._currentContext?.isUntracked;
   }
 }
 
-class RState<T> extends _BaseState<T> {
+class RState<T> extends BaseState<T> {
   RState({
     required T initialValue,
     required super.cancellable,
@@ -242,12 +259,13 @@ class RState<T> extends _BaseState<T> {
   }
 
   /// 强制通知下游进行刷新
+  @override
   void refresh() {
     _notifyOrQueue();
   }
 }
 
-class ComputedState<T> extends _BaseState<T> {
+class ComputedState<T> extends BaseState<T> {
   final T Function() _computer;
 
   ComputedState({
@@ -314,6 +332,12 @@ class ComputedState<T> extends _BaseState<T> {
       }
     });
   }
+
+  @override
+  void refresh() {
+    _isDirty = true;
+    _notifyOrQueue();
+  }
 }
 
 /// 全局副作用注册器，用于自动运行和追踪一个无返回值操作（完全适配 Zone 链表架构）
@@ -333,6 +357,9 @@ class _EffectInstance implements _Observable {
     });
     run();
   }
+
+  @override
+  Cancellable get disposable => _token.makeCancellable();
 
   void run() {
     if (!_token.isAvailable) return;
@@ -374,7 +401,7 @@ class _EffectInstance implements _Observable {
 
         parentState.addListener(onParentChange);
         depToken.onCancel
-            .then((_) => parentState._removeListener(onParentChange));
+            .then((_) => parentState.removeListener(onParentChange));
       }
     }
   }
@@ -384,7 +411,12 @@ class _EffectInstance implements _Observable {
   void addListener(void Function() listener, {Cancellable? cancellable}) {}
 
   @override
-  void _removeListener(void Function() listener) {}
+  void removeListener(void Function() listener) {}
+
+  @override
+  void refresh() {
+    run();
+  }
 }
 
 // ==================== 4. 全局顶层副作用函数糖 ====================
