@@ -17,7 +17,7 @@ void main() {
   // 3. Register a side effect: whatever reactive states it reads inside the block,
   // it will automatically re-run whenever those states change.
   effect(() {
-    print('【UI Effect Card】Current total checkout amount: \${totalPrice.value}');
+    print('【UI Effect Card】Current total checkout amount: ${totalPrice.value}');
   }, scope);
 
   print('--- Modifying Quantity ---');

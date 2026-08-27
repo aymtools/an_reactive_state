@@ -41,7 +41,8 @@ class _ReactiveScope {
   static const Object _batchDepthKey = #_reactive_batch_depth;
 
   // 从当前 Zone 环境中安全提取属于该异步调用栈的链表头
-  _EvaluationContext? get _currentContext => Zone.current[_contextKey] as _EvaluationContext?;
+  _EvaluationContext? get _currentContext =>
+      Zone.current[_contextKey] as _EvaluationContext?;
 
   int get _batchDepth => (Zone.current[_batchDepthKey] as int?) ?? 0;
 
@@ -53,7 +54,8 @@ class _ReactiveScope {
   bool get isUntrackedMode => _currentContext?.isUntracked ?? false;
 
   /// 压栈并切入 Zone：利用 Zone.current.fork 动态创建并切入隔离的异步上下文
-  void pushContext(_Observable? observable, bool untracked, void Function() body) {
+  void pushContext(
+      _Observable? observable, bool untracked, void Function() body) {
     final nextNode = _EvaluationContext(
       observable: observable,
       isUntracked: untracked,
@@ -176,7 +178,8 @@ abstract class _BaseState<T> implements _Observable {
         }
 
         parentState.addListener(onParentChange);
-        depToken.onCancel.then((_) => parentState._removeListener(onParentChange));
+        depToken.onCancel
+            .then((_) => parentState._removeListener(onParentChange));
       }
     }
   }
@@ -304,7 +307,8 @@ class ComputedState<T> extends _BaseState<T> {
       _isDirty = false;
 
       // 结合 Equality Guard 判定最终结果是否存在实质演变
-      if (!hasError && (_cachedValue == null || !_isEqual(_cachedValue as T, freshValue))) {
+      if (!hasError &&
+          (_cachedValue == null || !_isEqual(_cachedValue as T, freshValue))) {
         _cachedValue = freshValue;
         _notifyOrQueue();
       }
@@ -369,7 +373,8 @@ class _EffectInstance implements _Observable {
         void onParentChange() => run();
 
         parentState.addListener(onParentChange);
-        depToken.onCancel.then((_) => parentState._removeListener(onParentChange));
+        depToken.onCancel
+            .then((_) => parentState._removeListener(onParentChange));
       }
     }
   }

@@ -35,13 +35,15 @@ extension RStateListExt<T> on RState<List<T>> {
   T operator [](int index) => value[index];
 
   /// 修改指定位置元素（替换模式，触发拓扑更新）
-  void operator []=(int index, T val) => update((l) => List<T>.from(l)..[index] = val);
+  void operator []=(int index, T val) =>
+      update((l) => List<T>.from(l)..[index] = val);
 
   /// 添加元素
   void add(T item) => update((l) => List<T>.from(l)..add(item));
 
   /// 添加多个元素
-  void addAll(Iterable<T> items) => update((l) => List<T>.from(l)..addAll(items));
+  void addAll(Iterable<T> items) =>
+      update((l) => List<T>.from(l)..addAll(items));
 
   /// 移除元素
   void remove(T item) => update((l) => List<T>.from(l)..remove(item));
@@ -71,7 +73,8 @@ extension RStateMapExt<K, V> on RState<Map<K, V>> {
   V? operator [](K key) => value[key];
 
   /// 设置键值对（替换模式，触发拓扑更新）
-  void operator []=(K key, V val) => update((m) => Map<K, V>.from(m)..[key] = val);
+  void operator []=(K key, V val) =>
+      update((m) => Map<K, V>.from(m)..[key] = val);
 
   /// 移除键
   void remove(K key) => update((m) => Map<K, V>.from(m)..remove(key));

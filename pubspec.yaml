@@ -1,5 +1,5 @@
 name: an_reactive_state
-description: "A pure Dart Call-Stack synchronous reactive graph engine. Features unified lazy evaluation, dual-buffered dynamic graph diffing, equality guards, and full async interleaving thread isolation utilizing Dart Zones and Cancellable."
+description: "A high-performance synchronous reactive graph engine for Dart. Features lazy evaluation, async isolation via Zones, and absolute memory safety with Cancellable."
 version: 1.0.0
 
 homepage: https://github.com/aymtools/an_reactive_state/
