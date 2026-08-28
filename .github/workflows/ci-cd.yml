@@ -1,4 +1,4 @@
-name: Analysis and Publish to pub.dev
+name: Dart Package CI/CD
 
 on:
   push:
