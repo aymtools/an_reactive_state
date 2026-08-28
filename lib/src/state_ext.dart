@@ -52,7 +52,9 @@ extension RStateListExt<T> on RState<List<T>> {
   void removeAt(int index) => update((l) => List<T>.from(l)..removeAt(index));
 
   /// 清空列表
-  void clear() => value = [];
+  void clear() {
+    if (value.isNotEmpty) value = [];
+  }
 }
 
 /// Set 类型快捷操作
@@ -64,7 +66,9 @@ extension RStateSetExt<T> on RState<Set<T>> {
   void remove(T item) => update((s) => Set<T>.from(s)..remove(item));
 
   /// 清空 Set
-  void clear() => value = {};
+  void clear() {
+    if (value.isNotEmpty) value = {};
+  }
 }
 
 /// Map 类型快捷操作
@@ -80,7 +84,9 @@ extension RStateMapExt<K, V> on RState<Map<K, V>> {
   void remove(K key) => update((m) => Map<K, V>.from(m)..remove(key));
 
   /// 清空 Map
-  void clear() => value = {};
+  void clear() {
+    if (value.isNotEmpty) value = {};
+  }
 }
 
 /// 计算状态的列表读取扩展

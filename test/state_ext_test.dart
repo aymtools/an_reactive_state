@@ -45,16 +45,16 @@ void main() {
       expect(callCount, 3);
 
       list.addAll([2, 3]);
-      expect(list.value, [1, 2, 3]);
-      expect(callCount, 3);
+      expect(list.value, [10, 2, 3]);
+      expect(callCount, 4);
 
       list.remove(2);
-      expect(list.value, [1, 3]);
-      expect(callCount, 4);
+      expect(list.value, [10, 3]);
+      expect(callCount, 5);
 
       list.clear();
       expect(list.value, []);
-      expect(callCount, 5);
+      expect(callCount, 6);
     });
 
     test('Map extensions', () {

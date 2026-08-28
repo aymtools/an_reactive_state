@@ -77,22 +77,24 @@ class _ReactiveScope {
 
   /// 批量作用域控制：通过 runZoned 进行作用域深度递增隔离
   void runInBatch(void Function() action) {
+    if (_batchDepth > 0) {
+      action();
+      return;
+    }
     runZoned(() {
       action();
-
-      // 只有当外层批量逻辑彻底退出（深度归零）后，才同步派发通知
-      if (_batchDepth + 1 == 1) {
-        final finalObservables = List<_Observable>.from(_batchQueue);
+      while (_batchQueue.isNotEmpty) {
+        final items = _batchQueue.toList();
         _batchQueue.clear();
-        for (final obs in finalObservables) {
-          if (obs is BaseState) {
-            obs._directNotifyListeners();
+        for (final item in items) {
+          if (item is BaseState) {
+            item._directNotifyListeners();
           }
         }
       }
     }, zoneValues: {
       _contextKey: _currentContext,
-      _batchDepthKey: _batchDepth + 1, // 递增批量深度
+      _batchDepthKey: 1, // 顶级批量
     });
   }
 }
@@ -226,8 +228,8 @@ abstract class BaseState<T> implements _Observable {
   void refresh();
 
   static BaseState<dynamic>? get currentState {
-    return _ReactiveScope._instance._currentContext?.observable
-        as BaseState<dynamic>?;
+    final obs = _ReactiveScope._instance._currentContext?.observable;
+    return obs is BaseState<dynamic> ? obs : null;
   }
 
   static bool? get currentIsUntracked {
@@ -328,7 +330,6 @@ class ComputedState<T> extends BaseState<T> {
       if (!hasError &&
           (_cachedValue == null || !_isEqual(_cachedValue as T, freshValue))) {
         _cachedValue = freshValue;
-        _notifyOrQueue();
       }
     });
   }
