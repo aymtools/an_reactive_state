@@ -118,6 +118,7 @@ R untracked<R>(R Function() action) {
 
 abstract class BaseState<T> implements _Observable {
   T? _cachedValue;
+  bool _hasValue = false;
   final Cancellable _rootCancellable;
   final bool Function(T a, T b)? _equals;
 
@@ -237,26 +238,23 @@ abstract class BaseState<T> implements _Observable {
   }
 }
 
-class RState<T> extends BaseState<T> {
+class RState<T> extends ComputedState<T> {
   RState({
-    required T initialValue,
+    T Function()? computer,
+    T? initialValue,
     required super.cancellable,
     super.equals,
-  }) {
-    _cachedValue = initialValue;
-    _isDirty = false;
-  }
-
-  @override
-  void _evaluateIfDirty() {
-    // RState as a source manages its own state, nothing to evaluate here.
-  }
+  }) : super(
+          computer: computer ?? (() => initialValue as T),
+        );
 
   set value(T newValue) {
     if (!_rootCancellable.isAvailable) return;
-    if (_isEqual(_cachedValue as T, newValue)) return;
+    if (_hasValue && _isEqual(_cachedValue as T, newValue)) return;
 
     _cachedValue = newValue;
+    _hasValue = true;
+    _isDirty = false;
     _notifyOrQueue();
   }
 
@@ -327,9 +325,12 @@ class ComputedState<T> extends BaseState<T> {
       _isDirty = false;
 
       // 结合 Equality Guard 判定最终结果是否存在实质演变
-      if (!hasError &&
-          (_cachedValue == null || !_isEqual(_cachedValue as T, freshValue))) {
-        _cachedValue = freshValue;
+      if (!hasError) {
+        final changed = !_hasValue || !_isEqual(_cachedValue as T, freshValue);
+        if (changed) {
+          _cachedValue = freshValue;
+          _hasValue = true;
+        }
       }
     });
   }

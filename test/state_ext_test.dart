@@ -116,5 +116,19 @@ void main() {
       set.remove(1);
       expect(set.value, {2});
     });
+
+    test('update extension', () {
+      final state = RState<int>(initialValue: 10, cancellable: scope);
+      state.update((old) => old * 2);
+      expect(state.value, 20);
+    });
+
+    test('bool extension', () {
+      final state = RState<bool>(initialValue: false, cancellable: scope);
+      state.toggle();
+      expect(state.value, true);
+      state.toggle();
+      expect(state.value, false);
+    });
   });
 }
