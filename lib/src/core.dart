@@ -412,11 +412,6 @@ class _EffectInstance implements _Observable {
 
   @override
   void removeListener(void Function() listener) {}
-
-  @override
-  void refresh() {
-    run();
-  }
 }
 
 // ==================== 4. 全局顶层副作用函数糖 ====================
