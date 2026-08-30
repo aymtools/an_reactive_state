@@ -1,6 +1,6 @@
 name: an_reactive_state
 description: "A high-performance synchronous reactive graph engine for Dart. Features lazy evaluation, async isolation via Zones, and absolute memory safety with Cancellable."
-version: 1.0.0
+version: 1.1.0
 
 homepage: https://github.com/aymtools/an_reactive_state/
 issue_tracker: https://github.com/aymtools/an_reactive_state/issues
