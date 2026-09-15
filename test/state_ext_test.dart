@@ -32,7 +32,7 @@ void main() {
       effect(() {
         list.value;
         callCount++;
-      }, scope);
+      }, cancellable: scope);
 
       list.add(1);
       expect(list.value, [1]);
@@ -58,12 +58,13 @@ void main() {
     });
 
     test('Map extensions', () {
-      final map = RState<Map<String, int>>(initialValue: {}, cancellable: scope);
+      final map =
+          RState<Map<String, int>>(initialValue: {}, cancellable: scope);
       int callCount = 0;
       effect(() {
         map.value;
         callCount++;
-      }, scope);
+      }, cancellable: scope);
 
       map['a'] = 1;
       expect(map.value, {'a': 1});
@@ -79,7 +80,8 @@ void main() {
     });
 
     test('ComputedState operators', () {
-      final source = RState<List<int>>(initialValue: [1, 2], cancellable: scope);
+      final source =
+          RState<List<int>>(initialValue: [1, 2], cancellable: scope);
       final computed = ComputedState<List<int>>(
         cancellable: scope,
         computer: () => source.value.map((e) => e * 2).toList(),
@@ -88,7 +90,8 @@ void main() {
       expect(computed[0], 2);
       expect(computed[1], 4);
 
-      final mapSource = RState<Map<String, int>>(initialValue: {'a': 1}, cancellable: scope);
+      final mapSource =
+          RState<Map<String, int>>(initialValue: {'a': 1}, cancellable: scope);
       final mapComputed = ComputedState<Map<String, int>>(
         cancellable: scope,
         computer: () => mapSource.value,
@@ -102,7 +105,7 @@ void main() {
       effect(() {
         list.value;
         callCount++;
-      }, scope);
+      }, cancellable: scope);
 
       list.mutate((l) => l.add(2));
       expect(list.value, [1, 2]);

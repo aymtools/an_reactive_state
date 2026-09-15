@@ -27,7 +27,7 @@ void main() {
       effect(() {
         effectCount++;
         lastSum = sum.value;
-      }, scope);
+      }, cancellable: scope);
 
       expect(lastSum, 3);
       expect(effectCount, 1);
@@ -77,7 +77,7 @@ void main() {
       effect(() {
         state.value;
         callCount++;
-      }, scope);
+      }, cancellable: scope);
 
       expect(callCount, 1);
       state.refresh();

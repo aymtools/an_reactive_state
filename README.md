@@ -83,7 +83,7 @@ void main() {
   // it will automatically re-run whenever those states change.
   effect(() {
     print('【UI Effect Card】Current total checkout amount: \${totalPrice.value}');
-  }, scope);
+  }, cancellable: scope);
 
   print('--- Modifying Quantity ---');
   count.value = 3; // Executed synchronously inside the current call stack
@@ -166,7 +166,7 @@ class OrderCartManager {
     // Bind automated domain side-effects
     effect(() {
       print('【Domain Event Report】Current final payment amount flowed to: \${finalPay.value}');
-    }, _bag);
+    }, cancellable: _bag);
   }
 
   void addItems(int countToAdd) {

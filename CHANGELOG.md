@@ -1,3 +1,12 @@
+## 1.2.0
+
+* **API**: Made `cancellable` parameter optional in `BaseState`, `RState`, and `ComputedState`.
+
+### Breaking Change
+
+* Changed `effect()` second argument `cancellable` from positional required to named optional (
+  `effect(action, {cancellable})`).
+
 ## 1.1.0
 
 * **Architecture**: Refactored `RState` to inherit from `ComputedState` for unified reactive logic.

@@ -11,17 +11,19 @@ void main() {
   // 2. Declare a high-order derived calculation state
   final totalPrice = ComputedState<double>(
     cancellable: scope,
-    computer: () => price.value * count.value, // Automatically tracks price and count
+    computer: () =>
+        price.value * count.value, // Automatically tracks price and count
   );
 
   // 3. Register a side effect: whatever reactive states it reads inside the block,
   // it will automatically re-run whenever those states change.
   effect(() {
     print('【UI Effect Card】Current total checkout amount: ${totalPrice.value}');
-  }, scope);
+  }, cancellable: scope);
 
   print('--- Modifying Quantity ---');
   count.value = 3; // Executed synchronously inside the current call stack
 
-  scope.cancel(); // Everything self-destructs; subsequent writes are safely blocked.
+  scope
+      .cancel(); // Everything self-destructs; subsequent writes are safely blocked.
 }

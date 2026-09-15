@@ -129,9 +129,9 @@ abstract class BaseState<T> implements _Observable {
   Set<_Observable> _dependencies = {};
 
   BaseState({
-    required Cancellable cancellable,
+    Cancellable? cancellable,
     bool Function(T a, T b)? equals,
-  })  : _rootCancellable = cancellable,
+  })  : _rootCancellable = cancellable ?? Cancellable(),
         _equals = equals {
     _rootCancellable.onCancel.then((_) {
       _listeners.clear();
@@ -242,7 +242,7 @@ class RState<T> extends ComputedState<T> {
   RState({
     T Function()? computer,
     T? initialValue,
-    required super.cancellable,
+    super.cancellable,
     super.equals,
   }) : super(
           computer: computer ?? (() => initialValue as T),
@@ -270,7 +270,7 @@ class ComputedState<T> extends BaseState<T> {
 
   ComputedState({
     required T Function() computer,
-    required super.cancellable,
+    super.cancellable,
     super.equals,
   }) : _computer = computer;
 
@@ -420,6 +420,6 @@ class _EffectInstance implements _Observable {
 
 /// 全自动响应式副作用处理器。
 /// 传入的 [action] 会立刻执行一次，并且未来内部读取的任何 State 变更时都会强同步自动重跑。
-void effect(void Function() action, Cancellable cancellable) {
-  _EffectInstance(action, cancellable);
+void effect(void Function() action, {Cancellable? cancellable}) {
+  _EffectInstance(action, cancellable ?? Cancellable());
 }
