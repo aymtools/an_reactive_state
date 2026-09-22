@@ -7,7 +7,9 @@ import 'package:cancellable/cancellable.dart';
 /// 响应式拓扑网络的基石。
 /// 彻底抹去泛型 [T]，只专注于依赖的注册、注销与失效扩散。
 abstract class _Observable {
-  Cancellable get disposable;
+  Cancellable get disposable => makeLiveCancellable(weakRef: false);
+
+  Cancellable makeLiveCancellable({Cancellable? other, bool weakRef = true});
 
   void addListener(void Function() listener, {Cancellable? cancellable});
 
@@ -140,7 +142,11 @@ abstract class BaseState<T> implements _Observable {
   }
 
   @override
-  Cancellable get disposable => _rootCancellable.makeCancellable();
+  Cancellable get disposable => makeLiveCancellable(weakRef: false);
+
+  @override
+  Cancellable makeLiveCancellable({Cancellable? other, bool weakRef = true}) =>
+      _rootCancellable.makeCancellable(father: other, weakRef: weakRef);
 
   void _clearAllDependencies() {
     for (final token in _activeParentTokens.values) {
@@ -361,7 +367,11 @@ class _EffectInstance implements _Observable {
   }
 
   @override
-  Cancellable get disposable => _token.makeCancellable();
+  Cancellable get disposable => makeLiveCancellable(weakRef: false);
+
+  @override
+  Cancellable makeLiveCancellable({Cancellable? other, bool weakRef = true}) =>
+      _token.makeCancellable(father: other, weakRef: weakRef);
 
   void run() {
     if (!_token.isAvailable) return;

@@ -49,7 +49,7 @@ Add the following dependencies to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  an_reactive_state: ^1.0.0
+  an_reactive_state: ^1.2.1
   cancellable: ^2.6.0     # The foundation of industrial lifecycle management
 ```
 
@@ -60,7 +60,7 @@ dependencies:
 ### 1. Basic Read/Write, Derived State, and Side Effects (`effect`)
 
 In `an_reactive_state`, raw state sources and high-order calculation pipelines share a uniform
-interface.
+interface. Note that the `cancellable` parameter is optional across all state constructors and `effect()`.
 
 ```dart
 import 'package:cancellable/cancellable.dart';
@@ -70,8 +70,8 @@ void main() {
   final scope = Cancellable();
 
   // 1. Declare raw state atoms (Sources)
-  final price = RState<double>(initialValue: 99.0, cancellable: scope);
-  final count = RState<int>(initialValue: 1, cancellable: scope);
+  final price = RState<double>(initialValue: 99.0);
+  final count = RState<int>(initialValue: 1);
 
   // 2. Declare a high-order derived calculation state (Computed)
   final totalPrice = ComputedState<double>(
@@ -209,6 +209,40 @@ final ComputedState<String> lazyAndFrozenConfig = ComputedState<String>(
       return snapshot!;
     };
   }(), // Immediately run the outer closure to bind the self-detaching inner function
+);
+```
+
+---
+
+## 💡 Advanced Features & Extensions
+
+### Collections & In-Place Mutation
+
+`RState` and `ComputedState` provide built-in extension methods for list/map operations and in-place state mutation:
+
+```dart
+// Direct list & map indexing operators
+final list = RState<List<int>>(initialValue: [10, 20]);
+print(list[0]); // 10
+
+final map = RState<Map<String, int>>(initialValue: {'a': 1});
+map['b'] = 2; // Automatically triggers reactive update
+
+// In-place mutation with automatic notification
+list.mutate((l) => l.add(30));
+
+// Manual refresh trigger
+list.refresh();
+```
+
+### Flexible Lifecycle Trees (`makeLiveCancellable`)
+
+In addition to passing `cancellable` in constructors, state nodes and side effect instances expose `makeLiveCancellable()` to dynamically derive child token scopes with parent linkage and weak reference configuration:
+
+```dart
+final liveToken = state.makeLiveCancellable(
+  other: customParentScope,
+  weakRef: true,
 );
 ```
 

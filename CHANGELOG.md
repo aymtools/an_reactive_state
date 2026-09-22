@@ -1,3 +1,8 @@
+## 1.2.1
+
+* **API**: Added `makeLiveCancellable()` to `_Observable` and its implementations (`BaseState`, `_EffectInstance`) for custom `Cancellable` binding with weak reference support.
+* **Internal**: Refactored `disposable` property to delegate to `makeLiveCancellable(weakRef: false)`.
+
 ## 1.2.0
 
 * **API**: Made `cancellable` parameter optional in `BaseState`, `RState`, and `ComputedState`.
